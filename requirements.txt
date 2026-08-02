@@ -1,0 +1,29 @@
+# local package
+-e .
+
+# core
+pandas
+numpy
+scikit-learn
+joblib
+scipy
+
+# text processing
+nltk
+beautifulsoup4
+
+# api
+fastapi
+uvicorn[standard]
+pydantic
+python-dotenv
+
+# llm explanation layer
+groq
+
+# supabase logging
+supabase
+
+# dev / test
+pytest
+httpx
