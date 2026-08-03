@@ -15,7 +15,6 @@ def clean_text(text: str) -> str:
     text = re.sub(r"<[^>]+>", "", text)  # remove html tags
     text = re.sub(r"http\S+|www\.\S+","URL",text)
     text = re.sub(r"\S+@\S+","EMAIL",text)
-    text = re.sub(r"\s+","",text).strip()
     return text
 
 def load_sms(path:Path) -> pd.DataFrame:
