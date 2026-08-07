@@ -11,7 +11,7 @@ HAND_CRAFTED_COLS = ["url_count", "exclamation_count", "capital_ratio", "digit_r
 
 def url_count(text):
     """Number of URL tokens in the (already-cleaned) message."""
-    return len(re.findall(r"\bURL\b", text))
+    return len(re.findall(r"http\S+|www\.\S+", text))
 
 
 def exclamation_count(text):
@@ -79,7 +79,7 @@ def load_vectorizer(path: Path = MODELS_DIR / "vectorizer.joblib") -> TfidfVecto
 
 
 if __name__ == "__main__":
-    df = pd.read_csv("data/processed/spam_unified.csv")
+    df = pd.read_csv("data/processed/spam_dataset.csv")
 
     if not all(col in df.columns for col in HAND_CRAFTED_COLS):
         df = add_hand_crafted_features(df)
