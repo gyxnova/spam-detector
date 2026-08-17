@@ -1,12 +1,10 @@
 import re
 import pandas as pd
 import joblib
-from pathlib import Path
 from scipy.sparse import hstack, csr_matrix
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-MODELS_DIR = Path("models")
-HAND_CRAFTED_COLS = ["url_count", "exclamation_count", "capital_ratio", "digit_ratio", "message_length"]
+from config import PROCESSED_DATA_PATH, VECTORIZER_PATH, HAND_CRAFTED_COLS, TFIDF_PARAMS
 
 
 def url_count(text):
@@ -15,12 +13,10 @@ def url_count(text):
 
 
 def exclamation_count(text):
-    """Number of ! characters."""
     return text.count("!")
 
 
 def capital_ratio(text):
-    """Ratio of uppercase letters to all alphabetic letters."""
     letters = [c for c in text if c.isalpha()]
     if len(letters) == 0:
         return 0.0
@@ -29,7 +25,6 @@ def capital_ratio(text):
 
 
 def digit_ratio(text):
-    """Ratio of digits to total characters."""
     if len(text) == 0:
         return 0.0
     digits = [c for c in text if c.isdigit()]
@@ -37,7 +32,6 @@ def digit_ratio(text):
 
 
 def message_length(text):
-    """Total number of characters."""
     return len(text)
 
 
@@ -53,12 +47,7 @@ def add_hand_crafted_features(df: pd.DataFrame) -> pd.DataFrame:
 def build_feature_matrix(df: pd.DataFrame, vectorizer: TfidfVectorizer = None, fit: bool = True):
     """Returns (feature_matrix, fitted_vectorizer)."""
     if fit:
-        vectorizer = TfidfVectorizer(
-            max_features=15000,
-            ngram_range=(1, 2),
-            stop_words="english",
-            min_df=2,
-        )
+        vectorizer = TfidfVectorizer(**TFIDF_PARAMS)
         tfidf = vectorizer.fit_transform(df["text"])
     else:
         tfidf = vectorizer.transform(df["text"])
@@ -69,17 +58,17 @@ def build_feature_matrix(df: pd.DataFrame, vectorizer: TfidfVectorizer = None, f
     return features, vectorizer
 
 
-def save_vectorizer(vectorizer: TfidfVectorizer, path: Path = MODELS_DIR / "vectorizer.joblib"):
+def save_vectorizer(vectorizer: TfidfVectorizer, path=VECTORIZER_PATH):
     path.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(vectorizer, path)
 
 
-def load_vectorizer(path: Path = MODELS_DIR / "vectorizer.joblib") -> TfidfVectorizer:
+def load_vectorizer(path=VECTORIZER_PATH) -> TfidfVectorizer:
     return joblib.load(path)
 
 
 if __name__ == "__main__":
-    df = pd.read_csv("data/processed/spam_dataset.csv")
+    df = pd.read_csv(PROCESSED_DATA_PATH)
 
     if not all(col in df.columns for col in HAND_CRAFTED_COLS):
         df = add_hand_crafted_features(df)
