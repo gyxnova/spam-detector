@@ -5,7 +5,7 @@ from functools import lru_cache
 
 from config import MODEL_PATH, VECTORIZER_PATH
 from src.data.make_dataset import clean_text
-from src.features.build_features import build_feature_matrix, add_hand_crafted_features, HAND_CRAFTED_COLS
+from src.features.build_features import add_hand_crafted_features, build_feature_matrix
 
 
 @lru_cache(maxsize=1)
@@ -17,21 +17,23 @@ def _load_artifacts():
 
 
 def predict(text: str) -> dict:
-    """
-    Takes a raw message string, returns a prediction dict.
+    """Classify one raw message as spam or ham.
 
-    TODO :
-    1. Load model + vectorizer via _load_artifacts()
-    2. Clean the input text using clean_text()
-    3. Build a single-row dataframe with the cleaned text
-    4. Add hand-crafted features (add_hand_crafted_features)
-    5. Build the feature matrix using build_feature_matrix(df, vectorizer=vectorizer, fit=False)
-    6. Run model.predict() and model.predict_proba() on it
-    7. Return a dict like:
-       {
-           "label": "spam" or "ham",
-           "is_spam": True/False,
-           "confidence": float (0-1)
-       }
+    The returned confidence is the model probability of the predicted class.
     """
-    raise NotImplementedError("predict() logic to be implemented")
+    model, vectorizer = _load_artifacts()
+
+    df = pd.DataFrame({"text": [clean_text(text)]})
+    df = add_hand_crafted_features(df)
+    features, _ = build_feature_matrix(df, vectorizer=vectorizer, fit=False)
+
+    prediction = int(model.predict(features)[0])
+    probability_index = list(model.classes_).index(prediction)
+    confidence = float(model.predict_proba(features)[0][probability_index])
+    is_spam = prediction == 1
+
+    return {
+        "label": "spam" if is_spam else "ham",
+        "is_spam": is_spam,
+        "confidence": confidence,
+    }
