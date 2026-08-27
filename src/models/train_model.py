@@ -1,3 +1,7 @@
+"""
+Trains and compares candidate spam classifiers, picks the best by
+cross-validated F1, and saves the final model to models/spam_clf.joblib
+"""
 import logging
 
 import joblib
@@ -8,10 +12,13 @@ from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import classification_report, confusion_matrix
 
 from config import PROCESSED_DATA_PATH, MODEL_PATH, METADATA_PATH, TEST_SIZE, RANDOM_STATE, CV_FOLDS
-from src.features.build_features import build_feature_matrix, save_vectorizer, HAND_CRAFTED_COLS
+from src.features.build_features import (
+    build_feature_matrix, save_vectorizer, save_scaler,
+    add_hand_crafted_features, HAND_CRAFTED_COLS
+)
 
 CANDIDATES = {
-    "logistic_regression": LogisticRegression(max_iter=1000, class_weight="balanced"),
+    "logistic_regression": LogisticRegression(max_iter=3000, class_weight="balanced"),
     "naive_bayes": MultinomialNB(),
 }
 
@@ -21,19 +28,23 @@ def main():
     df = pd.read_csv(PROCESSED_DATA_PATH)
 
     if not all(col in df.columns for col in HAND_CRAFTED_COLS):
-        from src.features.build_features import add_hand_crafted_features
         df = add_hand_crafted_features(df)
 
     train_df, test_df = train_test_split(
         df, test_size=TEST_SIZE, stratify=df["label"], random_state=RANDOM_STATE
     )
 
-    X_train, vectorizer = build_feature_matrix(train_df, fit=True)
-    X_test, _ = build_feature_matrix(test_df, vectorizer=vectorizer, fit=False)
+    X_train, vectorizer, scaler = build_feature_matrix(train_df, fit=True)
+    X_test, _, _ = build_feature_matrix(test_df, vectorizer=vectorizer, scaler=scaler, fit=False)
     y_train, y_test = train_df["label"], test_df["label"]
 
     best_name, best_model, best_score = None, None, -1
     for name, model in CANDIDATES.items():
+        # Naive Bayes can't handle negative values (StandardScaler produces them),
+        # so it's excluded now that hand-crafted features are scaled.
+        if name == "naive_bayes":
+            logger.info("Skipping naive_bayes: incompatible with scaled (negative-valued) features")
+            continue
         scores = cross_val_score(model, X_train, y_train, cv=CV_FOLDS, scoring="f1")
         logger.info(f"{name}: CV F1 = {scores.mean():.4f} (+/- {scores.std():.4f})")
         if scores.mean() > best_score:
@@ -49,8 +60,9 @@ def main():
     MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(best_model, MODEL_PATH)
     save_vectorizer(vectorizer)
+    save_scaler(scaler)
     joblib.dump({"model_name": best_name, "cv_f1": best_score}, METADATA_PATH)
-    logger.info(f"Saved model + vectorizer to {MODEL_PATH.parent}/")
+    logger.info(f"Saved model + vectorizer + scaler to {MODEL_PATH.parent}/")
 
 
 if __name__ == "__main__":

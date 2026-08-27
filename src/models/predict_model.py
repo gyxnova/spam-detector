@@ -1,19 +1,25 @@
-﻿
+﻿"""
+Inference helper used by the FastAPI service.
+Loads the trained classifier, vectorizer, and scaler once and exposes a predict() function.
+"""
 import joblib
 import pandas as pd
 from functools import lru_cache
 
-from config import MODEL_PATH, VECTORIZER_PATH
+from config import MODEL_PATH, VECTORIZER_PATH, MODELS_DIR
 from src.data.make_dataset import clean_text
-from src.features.build_features import add_hand_crafted_features, build_feature_matrix
+from src.features.build_features import build_feature_matrix, add_hand_crafted_features
+
+SCALER_PATH = MODELS_DIR / "scaler.joblib"
 
 
 @lru_cache(maxsize=1)
 def _load_artifacts():
-    """Loads the trained model and fitted vectorizer once, caches them in memory."""
+    """Loads the trained model, fitted vectorizer, and fitted scaler once, caches them in memory."""
     model = joblib.load(MODEL_PATH)
     vectorizer = joblib.load(VECTORIZER_PATH)
-    return model, vectorizer
+    scaler = joblib.load(SCALER_PATH)
+    return model, vectorizer, scaler
 
 
 def predict(text: str) -> dict:
@@ -21,11 +27,11 @@ def predict(text: str) -> dict:
 
     The returned confidence is the model probability of the predicted class.
     """
-    model, vectorizer = _load_artifacts()
+    model, vectorizer, scaler = _load_artifacts()
 
     df = pd.DataFrame({"text": [clean_text(text)]})
     df = add_hand_crafted_features(df)
-    features, _ = build_feature_matrix(df, vectorizer=vectorizer, fit=False)
+    features, _, _ = build_feature_matrix(df, vectorizer=vectorizer, scaler=scaler, fit=False)
 
     prediction = int(model.predict(features)[0])
     probability_index = list(model.classes_).index(prediction)
