@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Spam Detector</title>
+<style>
+  :root {
+    --bg: #070708;
+    --surface: #0A1B4D;
+    --accent: #8F168A;
+    --accent-secondary: #4B1863;
+    --muted: #a8a8c0;
+    --text: #e2e2e8;
+    --spam: #f87171;
+    --ham: #6ee7b7;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    padding: 48px 16px;
+    min-height: 100vh;
+  }
+
+  .card {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 560px;
+    width: 100%;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    border: 1px solid var(--accent-secondary);
+  }
+
+  h1 {
+    font-size: 1.4rem;
+    margin: 0 0 4px;
+  }
+
+  p.sub {
+    color: var(--muted);
+    margin: 0 0 20px;
+    font-size: 0.9rem;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 140px;
+    border-radius: 10px;
+    border: 1px solid var(--accent-secondary);
+    background: var(--bg);
+    color: var(--text);
+    padding: 12px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    resize: vertical;
+  }
+
+  textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  button {
+    margin-top: 12px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  button:hover {
+    opacity: 0.9;
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .result {
+    margin-top: 20px;
+    padding: 16px;
+    border-radius: 10px;
+    display: none;
+  }
+
+  .result.spam {
+    background: rgba(248, 113, 113, 0.12);
+    border: 1px solid var(--spam);
+  }
+
+  .result.ham {
+    background: rgba(110, 231, 183, 0.12);
+    border: 1px solid var(--ham);
+  }
+
+  .label {
+    font-weight: 700;
+    font-size: 1.1rem;
+    text-transform: uppercase;
+  }
+
+  .conf {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-top: 4px;
+  }
+
+  .explain {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Spam Detector</h1>
+    <p class="sub">Paste an SMS or email message below.</p>
+    <textarea id="msg" placeholder="e.g. Congratulations! You've won a $1000 gift card, click here to claim..."></textarea>
+    <div>
+      <button id="checkBtn">Check message</button>
+    </div>
+    <div id="result" class="result">
+      <div class="label" id="label"></div>
+      <div class="conf" id="conf"></div>
+      <div class="explain" id="explain"></div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "http://127.0.0.1:8000";
+
+    const btn = document.getElementById("checkBtn");
+    const msg = document.getElementById("msg");
+    const result = document.getElementById("result");
+    const labelEl = document.getElementById("label");
+    const confEl = document.getElementById("conf");
+    const explainEl = document.getElementById("explain");
+
+    btn.addEventListener("click", async () => {
+      const text = msg.value.trim();
+      if (!text) return;
+
+      btn.disabled = true;
+      btn.textContent = "Checking...";
+
+      try {
+        const res = await fetch(`${API_BASE}/explain`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+
+        if (!res.ok) throw new Error("API error");
+
+        const data = await res.json();
+
+        result.style.display = "block";
+        result.className = "result " + (data.is_spam ? "spam" : "ham");
+        labelEl.textContent = data.label;
+        confEl.textContent = `Confidence: ${(data.confidence * 100).toFixed(1)}%`;
+        explainEl.textContent = data.explanation || "";
+      } catch (err) {
+        result.style.display = "block";
+        result.className = "result spam";
+        labelEl.textContent = "Error";
+        confEl.textContent = "";
+        explainEl.textContent = "Could not reach the API. Is the server running?";
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Check message";
+      }
+    });
+  </script>
+</body>
+</html>
