@@ -30,7 +30,7 @@ def explain(text: str, label: str, confidence: float = None) -> str:
 
     prompt = (
         f'A spam classifier labeled this message as \'{label}\'{conf_str}.\n\n'
-        f'Message: \"{text}\"\n\n'
+        f'Message: "{text}"\n\n'
         'In 1-2 short sentences, explain the specific cues (wording, urgency, '
         'links, requests, etc.) that likely drove this verdict. Be concise and concrete.'
     )
@@ -38,7 +38,11 @@ def explain(text: str, label: str, confidence: float = None) -> str:
     response = client.chat.completions.create(
         model='openai/gpt-oss-20b',
         messages=[{'role': 'user', 'content': prompt}],
-        max_tokens=120,
+        max_tokens=400,
         temperature=0.3,
     )
-    return response.choices[0].message.content.strip()
+
+    content = response.choices[0].message.content
+    print(f"[explain debug] finish_reason={response.choices[0].finish_reason}, content={content!r}")
+
+    return (content or "").strip()
