@@ -4,7 +4,18 @@ from pydantic import BaseModel,Field
 from src.models.predict_model import predict as run_predict
 from src.models.explain import explain as run_explain
 
+from fastapi.middleware.cors import CORSMiddleware
+
+
 app = FastAPI(title="Spam Classifier API", description="A simple API for classifying messages as spam or ham.", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 class MessageInput(BaseModel):
     text: str = Field(...,min_length=1,max_length=10000)
