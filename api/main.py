@@ -9,6 +9,10 @@ app = FastAPI(title="Spam Classifier API", description="A simple API for classif
 class MessageInput(BaseModel):
     text: str = Field(...,min_length=1,max_length=10000)
 
+@app.get("/")
+def root():
+    return {"message": "Spam Detector API is running. Visit /docs for available endpoints."}    
+
 @app.get('/health')
 def health_check():
     """Health check endpoint to verify that the API is running."""
